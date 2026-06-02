@@ -1,0 +1,6 @@
+{
+  "name": "Vigor Body",
+  "description": "Sophisticated dark design for local diet and customized body-shape calorie and gym guide with competitive leaderboards.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
