@@ -7,18 +7,32 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { UserProfile, ProfilePost } from '../types';
 import { database, auth } from '../firebase';
 import { ref, onValue, set, push } from 'firebase/database';
-import { Camera, Calendar, Award, Sparkles, Plus, Image as ImageIcon, Check, Edit2, Loader2, Heart, Award as TrophyIcon } from 'lucide-react';
+import { Camera, Calendar, Award, Sparkles, Plus, Image as ImageIcon, Check, Edit2, Loader2, Heart, Award as TrophyIcon, Settings as SettingsIcon } from 'lucide-react';
 import { motion } from 'motion/react';
+import { calculateUserRankAndLevel } from '../utils';
+import Settings from './Settings';
 
 interface ProfileProps {
   userProfile: UserProfile;
   totalPoints: number;
   onChangeProfile: (profile: UserProfile) => void;
+  theme: 'light' | 'dark';
+  onChangeTheme: (theme: 'light' | 'dark') => void;
+  onResetTargets: () => void;
+  onLogout: () => void;
 }
 
 const IMGBB_API_KEY = '5fd2a4346ac2e5485a916a5d734d508b';
 
-export default function Profile({ userProfile, totalPoints, onChangeProfile }: ProfileProps) {
+export default function Profile({ 
+  userProfile, 
+  totalPoints, 
+  onChangeProfile,
+  theme,
+  onChangeTheme,
+  onResetTargets,
+  onLogout
+}: ProfileProps) {
   const [posts, setPosts] = useState<ProfilePost[]>([]);
   const [loadingPosts, setLoadingPosts] = useState(true);
   
@@ -30,11 +44,16 @@ export default function Profile({ userProfile, totalPoints, onChangeProfile }: P
 
   // New Post state
   const [postTitle, setPostTitle] = useState('');
+  const [postDescription, setPostDescription] = useState('');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [postingError, setPostingError] = useState<string | null>(null);
   const [postingSuccess, setPostingSuccess] = useState(false);
+
+  // Modal view post state
+  const [selectedPost, setSelectedPost] = useState<ProfilePost | null>(null);
+  const [showSettingsOverlay, setShowSettingsOverlay] = useState(false);
 
   // Profile Picture state
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
@@ -81,52 +100,7 @@ export default function Profile({ userProfile, totalPoints, onChangeProfile }: P
 
   // Calculate Level and Rank based on totalPoints (XP)
   const stats = useMemo(() => {
-    const xp = totalPoints;
-    let level = 1;
-    let rank = 'D';
-    let nextTierXp = 300;
-    let rankGlowClass = 'text-zinc-400 dark:text-zinc-500 bg-zinc-150 dark:bg-zinc-800';
-
-    if (xp < 300) {
-      level = 1;
-      rank = 'D';
-      nextTierXp = 300;
-      rankGlowClass = 'text-zinc-500 bg-zinc-100 dark:bg-zinc-900 border-zinc-200';
-    } else if (xp < 600) {
-      level = 2;
-      rank = 'C';
-      nextTierXp = 600;
-      rankGlowClass = 'text-blue-500 bg-blue-50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-900/50';
-    } else if (xp < 1000) {
-      level = 3;
-      rank = 'B';
-      nextTierXp = 1000;
-      rankGlowClass = 'text-emerald-500 bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-900/50';
-    } else if (xp < 1800) {
-      level = 4;
-      rank = 'A';
-      nextTierXp = 1800;
-      rankGlowClass = 'text-pink-500 bg-pink-50 dark:bg-pink-950/30 border-pink-200 dark:border-pink-900/50';
-    } else if (xp < 2800) {
-      level = 5;
-      rank = 'S';
-      nextTierXp = 2800;
-      rankGlowClass = 'text-amber-500 bg-amber-50 dark:bg-amber-950/35 border-amber-300 dark:border-amber-700/50 font-black animate-pulse shadow-xs';
-    } else if (xp < 4000) {
-      level = 6;
-      rank = 'SS';
-      nextTierXp = 4000;
-      rankGlowClass = 'text-lime-600 bg-lime-50 dark:bg-lime-950/35 border-lime-300 dark:border-lime-700/50 font-black animate-pulse shadow-sm';
-    } else {
-      level = 7 + Math.floor((xp - 4000) / 1500);
-      rank = 'SSS';
-      nextTierXp = xp + 1500;
-      rankGlowClass = 'text-orange-500 bg-orange-50 dark:bg-orange-950/40 border-orange-300 dark:border-orange-600/60 font-black animate-bounce shadow-md';
-    }
-
-    const progressPercentage = Math.min(100, Math.round((xp / nextTierXp) * 100));
-
-    return { level, rank, progressPercentage, nextTierXp, rankGlowClass };
+    return calculateUserRankAndLevel(totalPoints);
   }, [totalPoints]);
 
   // Handle Monthly participation list (Unique Month-Years from posts list plus current month)
@@ -259,6 +233,7 @@ export default function Profile({ userProfile, totalPoints, onChangeProfile }: P
       const todayStr = new Date().toISOString().split('T')[0];
       const newPost: Omit<ProfilePost, 'id'> = {
         title: postTitle.trim(),
+        description: postDescription.trim(),
         imageUrl,
         date: todayStr,
         createdAt: new Date().toISOString(),
@@ -269,6 +244,7 @@ export default function Profile({ userProfile, totalPoints, onChangeProfile }: P
 
       // Clean form state
       setPostTitle('');
+      setPostDescription('');
       setSelectedFile(null);
       setImagePreview(null);
       setPostingSuccess(true);
@@ -303,10 +279,18 @@ export default function Profile({ userProfile, totalPoints, onChangeProfile }: P
       <div className="bg-white dark:bg-zinc-900 border border-zinc-150 dark:border-zinc-800 rounded-3xl p-5 shadow-xs flex flex-col items-center relative overflow-hidden">
         
         {/* Absolute Glowing Rank Badge */}
-        <div className={`absolute top-4 right-4 border text-[11px] px-2.5 py-1 rounded-full font-black tracking-wider shadow-xs flex items-center gap-1 uppercase ${stats.rankGlowClass}`}>
-          <TrophyIcon className="w-3.5 h-3.5" />
+        <div className={`absolute top-4 left-4 border text-[10px] px-2.5 py-1 rounded-full font-black tracking-wider shadow-xs flex items-center gap-1 uppercase ${stats.rankGlowClass}`}>
+          <TrophyIcon className="w-3 h-3" />
           Rank {stats.rank}
         </div>
+
+        {/* Absolute Settings Button */}
+        <button
+          onClick={() => setShowSettingsOverlay(true)}
+          className="absolute top-4 right-4 p-1.5 bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 rounded-full hover:scale-105 active:scale-95 transition cursor-pointer border-transparent"
+        >
+          <SettingsIcon className="w-4 h-4" />
+        </button>
 
         {/* Profile Avatar with ImgBB Uploader */}
         <div className="relative mt-2">
@@ -486,6 +470,19 @@ export default function Profile({ userProfile, totalPoints, onChangeProfile }: P
               />
             </div>
 
+            {/* Post description text fields */}
+            <div className="flex flex-col gap-1">
+              <label htmlFor="postDescInput" className="text-[10px] uppercase font-bold text-zinc-400">Description / Workout Details</label>
+              <textarea
+                id="postDescInput"
+                placeholder="Describe your exercise details, reps/sets or feelings..."
+                value={postDescription}
+                rows={2}
+                onChange={(e) => setPostDescription(e.target.value)}
+                className="px-3.5 py-2 rounded-xl text-xs font-semibold bg-zinc-50 dark:bg-zinc-850 hover:bg-zinc-100 dark:hover:bg-zinc-800 border border-zinc-150 dark:border-zinc-800 focus:outline-none resize-none"
+              />
+            </div>
+
             {/* Photo Picker drop area */}
             <div className="flex flex-col gap-1">
               <span className="text-[10px] uppercase font-bold text-zinc-400">Snap Gym Picture</span>
@@ -589,51 +586,152 @@ export default function Profile({ userProfile, totalPoints, onChangeProfile }: P
             </p>
           </div>
         ) : (
-          <div className="flex flex-col gap-4">
-            {filteredPosts.map((post) => (
-              <motion.div
-                key={post.id}
-                initial={{ opacity: 0, y: 15 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="bg-white dark:bg-zinc-900 border border-zinc-150 dark:border-zinc-800 rounded-3xl overflow-hidden shadow-xs relative"
-              >
-                {/* Header display containing Title and Date */}
-                <div className="p-3.5 border-b border-zinc-100 dark:border-zinc-800/80 flex justify-between items-center bg-zinc-50/50 dark:bg-zinc-900/60">
-                  <h4 className="text-xs font-black text-zinc-900 dark:text-white leading-tight uppercase max-w-[70%] truncate">
-                    {post.title}
-                  </h4>
-                  <div className="flex items-center gap-1 text-[10px] font-bold text-zinc-400 dark:text-zinc-500 font-mono">
-                    <Calendar className="w-3.5 h-3.5 text-zinc-450 dark:text-zinc-550" />
-                    <span>{post.date}</span>
-                  </div>
-                </div>
-
-                {/* Published visual */}
-                <div className="aspect-square bg-zinc-950 overflow-hidden flex items-center justify-center relative">
+          <div className="grid grid-cols-3 gap-1.5 bg-zinc-100 dark:bg-zinc-900/50 p-1.5 rounded-2xl">
+            {filteredPosts.map((post) => {
+              const cheerCount = post.cheers ? Object.keys(post.cheers).length : 0;
+              return (
+                <motion.div
+                  key={post.id}
+                  initial={{ opacity: 0, scale: 0.92 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => setSelectedPost(post)}
+                  className="aspect-square bg-zinc-950 overflow-hidden relative rounded-xl border border-zinc-200/40 dark:border-zinc-800/60 cursor-pointer group"
+                >
                   <img
                     src={post.imageUrl}
                     alt={post.title}
-                    className="w-full h-full object-cover"
+                    className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
                     referrerPolicy="no-referrer"
                     loading="lazy"
                   />
-                </div>
-
-                {/* Footer details */}
-                <div className="px-4 py-3 bg-white dark:bg-zinc-900 border-t border-zinc-100 dark:border-zinc-800/80 flex justify-between items-center">
-                  <span className="text-[10px] font-extrabold text-lime-700 dark:text-lime-400 font-mono tracking-widest uppercase">
-                    PROVEN WORKOUT PROGRESS
-                  </span>
-                  <div className="flex items-center gap-1 text-[10px] font-black text-zinc-500 font-mono bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 rounded-md">
-                    🔥 SUCCESS
+                  {/* Cheer count badge overlay - ALWAYS visible bottom right layout */}
+                  <div className="absolute bottom-1 right-1 bg-black/60 backdrop-blur-xs px-1.5 py-0.5 rounded-md flex items-center gap-0.5 text-white text-[9px] font-black font-mono">
+                    <Heart className="w-2.5 h-2.5 fill-lime-400 text-lime-400" />
+                    <span>{cheerCount}</span>
                   </div>
-                </div>
-              </motion.div>
-            ))}
+                </motion.div>
+              );
+            })}
           </div>
         )}
 
       </div>
+
+      {/* Dynamic Popover full details modal for selected fitness post */}
+      {selectedPost && (
+        <div 
+          className="fixed inset-0 bg-black/90 z-[3000] flex flex-col justify-between p-4"
+          onClick={() => setSelectedPost(null)}
+        >
+          <div className="flex justify-between items-center w-full z-10 p-2" onClick={(e) => e.stopPropagation()}>
+            <span className="text-[10px] uppercase font-black text-lime-400 tracking-widest bg-lime-950/45 px-2.5 py-1 rounded border border-lime-800/45">
+              PROVEN PROGRESS DETAILS
+            </span>
+            <button 
+              onClick={() => setSelectedPost(null)}
+              className="text-white bg-white/10 hover:bg-white/20 p-2 rounded-full cursor-pointer leading-none text-xs"
+            >
+              ✕
+            </button>
+          </div>
+
+          <div className="flex-1 flex items-center justify-center p-2" onClick={(e) => e.stopPropagation()}>
+            <img
+              src={selectedPost.imageUrl}
+              alt={selectedPost.title}
+              className="max-h-[60vh] max-w-full object-contain rounded-2xl shadow-2xl border border-white/10"
+              referrerPolicy="no-referrer"
+            />
+          </div>
+
+          <div 
+            className="bg-zinc-900/95 backdrop-blur-md text-white p-5 rounded-3xl border border-white/10 max-w-md mx-auto w-full z-10 cursor-default"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <span className="text-[9px] uppercase font-black text-zinc-400 tracking-wider font-mono">
+              CHECK-IN DATE: {selectedPost.date}
+            </span>
+            <h3 className="text-sm font-black uppercase text-lime-400 leading-tight tracking-tight mt-1">
+              {selectedPost.title}
+            </h3>
+            
+            {selectedPost.description ? (
+              <p className="text-xs text-zinc-350 leading-relaxed mt-2.5 bg-black/30 p-3 rounded-xl border border-white/5 font-medium">
+                {selectedPost.description}
+              </p>
+            ) : (
+              <p className="text-xs italic text-zinc-550 mt-1 font-medium">
+                No session description added.
+              </p>
+            )}
+
+            <div className="flex justify-between items-center mt-4 pt-3.5 border-t border-white/5">
+              <div className="flex items-center gap-1.5">
+                <Heart className="w-5 h-5 fill-lime-400 text-lime-400 animate-pulse" />
+                <span className="text-xs font-extrabold font-mono text-zinc-200">
+                  {selectedPost.cheers ? Object.keys(selectedPost.cheers).length : 0} Cheer Ups
+                </span>
+              </div>
+              
+              <button
+                onClick={() => {
+                  if (!uid) return;
+                  const hasCheered = selectedPost.cheers?.hasOwnProperty(uid);
+                  const postRef = ref(database, `users/${uid}/posts/${selectedPost.id}/cheers/${uid}`);
+                  set(postRef, hasCheered ? null : true);
+                  
+                  // Optimistic real-time local updates
+                  const updatedCheers = { ...(selectedPost.cheers || {}) };
+                  if (hasCheered) {
+                    delete updatedCheers[uid];
+                  } else {
+                    updatedCheers[uid] = true;
+                  }
+                  setSelectedPost({
+                    ...selectedPost,
+                    cheers: updatedCheers
+                  });
+                }}
+                className="bg-lime-500 hover:bg-lime-600 active:scale-95 text-zinc-950 font-black text-[11px] uppercase tracking-wide py-1.5 px-4 rounded-xl shadow-md transition cursor-pointer flex items-center gap-1 border-transparent"
+              >
+                <Heart className="w-3.5 h-3.5 fill-current" />
+                Cheer Up!
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Embedded local Settings Overlay Sheet inside Profile */}
+      {showSettingsOverlay && (
+        <div className="fixed inset-0 bg-black/75 backdrop-blur-xs z-[2000] flex flex-col justify-end">
+          <div className="bg-zinc-50 dark:bg-zinc-950 max-h-[90vh] overflow-y-auto rounded-t-[32px] border-t border-zinc-200 dark:border-zinc-800 p-4 transition-all pb-12 flex flex-col">
+            <div className="flex justify-between items-center mb-2 px-2">
+              <span className="text-[10px] uppercase font-black text-zinc-400 tracking-widest font-mono">
+                System Customizations Settings
+              </span>
+              <button 
+                onClick={() => setShowSettingsOverlay(false)}
+                className="bg-zinc-200 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 rounded-full px-3 py-1 font-bold text-xs"
+              >
+                Done
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto">
+              <Settings
+                userProfile={userProfile}
+                onChangeProfile={onChangeProfile}
+                theme={theme}
+                onChangeTheme={onChangeTheme}
+                onResetSystemTargetsOnly={onResetTargets}
+                onLogout={onLogout}
+              />
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );

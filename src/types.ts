@@ -97,6 +97,9 @@ export interface LeaderboardUser {
   score: number;
   isCurrentUser?: boolean;
   avatarUrl?: string;
+  uid?: string;
+  profile?: any; // any/UserProfile to be flexible and avoid circular references
+  posts?: any[]; // Array of posts
 }
 
 export interface RewardBadge {
@@ -110,7 +113,9 @@ export interface RewardBadge {
 export interface ProfilePost {
   id: string;
   title: string;
+  description?: string;
   imageUrl: string;
   date: string; // YYYY-MM-DD
   createdAt: string; // ISO string
+  cheers?: Record<string, boolean>;
 }

@@ -12,13 +12,13 @@ import Dashboard from './components/Dashboard';
 import Leaderboard from './components/Leaderboard';
 import Profile from './components/Profile';
 import Rewards from './components/Rewards';
-import Settings from './components/Settings';
+import Guide from './components/Guide';
 import FoodLoggerModal from './components/FoodLoggerModal';
 import AuthScreen from './components/AuthScreen';
 import { auth, database } from './firebase';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { ref, onValue, set, get, child } from 'firebase/database';
-import { Home, Trophy, User, Award, Settings as SettingsIcon, Sparkles } from 'lucide-react';
+import { Home, Trophy, User, Award, Settings as SettingsIcon, Sparkles, BookOpen } from 'lucide-react';
 
 const LOCAL_STORAGE_PROFILE_KEY = 'vigor_body_user_profile';
 const LOCAL_STORAGE_LOGS_KEY = 'vigor_body_daily_logs';
@@ -28,7 +28,7 @@ const LOCAL_STORAGE_STREAK_KEY = 'vigor_body_streak_count';
 export default function App() {
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [theme, setTheme] = useState<'light' | 'dark'>('dark');
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'leaderboard' | 'profile' | 'rewards' | 'settings'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'leaderboard' | 'profile' | 'rewards' | 'guide'>('dashboard');
   const [dailyLogs, setDailyLogs] = useState<Record<string, DailyLog>>({});
   const [isFoodLoggerOpen, setIsFoodLoggerOpen] = useState(false);
   const [foodLoggerCategory, setFoodLoggerCategory] = useState<'protein' | 'carbs' | 'fat' | null>(null);
@@ -332,6 +332,10 @@ export default function App() {
                 userProfile={userProfile}
                 totalPoints={totalPoints}
                 onChangeProfile={handleChangeProfile}
+                theme={theme}
+                onChangeTheme={setTheme}
+                onResetTargets={handleResetSystemTargets}
+                onLogout={handleLogout}
               />
             )}
 
@@ -345,15 +349,8 @@ export default function App() {
               />
             )}
 
-            {activeTab === 'settings' && (
-              <Settings
-                userProfile={userProfile}
-                onChangeProfile={handleChangeProfile}
-                theme={theme}
-                onChangeTheme={setTheme}
-                onResetSystemTargetsOnly={handleResetSystemTargets}
-                onLogout={handleLogout}
-              />
+            {activeTab === 'guide' && (
+              <Guide />
             )}
           </div>
 
@@ -367,7 +364,7 @@ export default function App() {
               id="tab-btn-dashboard"
             >
               <Home className="w-5 h-5 cursor-pointer" />
-              <span className="text-[9px] font-bold tracking-wide">Guide</span>
+              <span className="text-[9px] font-bold tracking-wide">Today</span>
             </button>
 
             <button
@@ -404,14 +401,14 @@ export default function App() {
             </button>
 
             <button
-              onClick={() => setActiveTab('settings')}
+              onClick={() => setActiveTab('guide')}
               className={`flex flex-col items-center gap-1 bg-transparent border-transparent select-none transition duration-150 ${
-                activeTab === 'settings' ? 'text-zinc-900 dark:text-lime-400 font-extrabold' : 'text-zinc-400 dark:text-zinc-500'
+                activeTab === 'guide' ? 'text-zinc-900 dark:text-lime-400 font-extrabold' : 'text-zinc-400 dark:text-zinc-500'
               }`}
-              id="tab-btn-settings"
+              id="tab-btn-guide"
             >
-              <SettingsIcon className="w-5 h-5 cursor-pointer" />
-              <span className="text-[9px] font-bold tracking-wide">Settings</span>
+              <BookOpen className="w-5 h-5 cursor-pointer" />
+              <span className="text-[9px] font-bold tracking-wide">Guide</span>
             </button>
           </div>
 

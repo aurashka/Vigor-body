@@ -6,9 +6,11 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { LeaderboardUser } from '../types';
 import { COUNTRIES } from '../data';
-import { Trophy, Medal, Flame, Search, Sparkles } from 'lucide-react';
+import { Trophy, Medal, Flame, Search, Sparkles, Heart, Calendar, Award as TrophyIcon } from 'lucide-react';
 import { database, auth } from '../firebase';
-import { ref, onValue } from 'firebase/database';
+import { ref, onValue, set } from 'firebase/database';
+import { motion } from 'motion/react';
+import { calculateUserRankAndLevel } from '../utils';
 
 interface LeaderboardProps {
   currentUserScore: number;
@@ -18,6 +20,8 @@ interface LeaderboardProps {
 export default function Leaderboard({ currentUserScore, currentUserCountry }: LeaderboardProps) {
   const [competitors, setCompetitors] = useState<LeaderboardUser[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [selectedVisitor, setSelectedVisitor] = useState<LeaderboardUser | null>(null);
+  const [selectedVisitorPost, setSelectedVisitorPost] = useState<any | null>(null);
 
   // Sync / Listen to all users from Realtime Database to extract real players
   useEffect(() => {
@@ -39,13 +43,22 @@ export default function Leaderboard({ currentUserScore, currentUserCountry }: Le
             const gender = profile.gender || 'male';
             const avatarUrl = gender === 'female' ? '👧🏻' : gender === 'non_binary' ? '🧑🏼' : '👦🏻';
 
+            const postsRaw = userData.posts || {};
+            const parsedPosts = Object.keys(postsRaw).map((postId) => ({
+              id: postId,
+              ...postsRaw[postId],
+            })).sort((a, b) => new Date(b.createdAt || b.date).getTime() - new Date(a.createdAt || a.date).getTime());
+
             return {
               rank: 0,
+              uid,
               name,
               country: `${countryFlag} ${countryName}`,
               score,
               isCurrentUser: uid === auth.currentUser?.uid,
               avatarUrl,
+              profile,
+              posts: parsedPosts,
             };
           });
 
@@ -141,10 +154,11 @@ export default function Leaderboard({ currentUserScore, currentUserCountry }: Le
               return (
                 <div
                   key={player.rank}
-                  className={`flex justify-between items-center px-3.5 py-3 rounded-2xl border transition duration-200 ${
+                  onClick={() => setSelectedVisitor(player)}
+                  className={`flex justify-between items-center px-3.5 py-3 rounded-2xl border transition duration-200 cursor-pointer hover:scale-[1.01] active:scale-[0.99] select-none ${
                     isSelf
                       ? 'border-lime-500 bg-lime-50/20 dark:bg-zinc-850 dark:border-lime-500 shadow-xs'
-                      : 'border-zinc-100 dark:border-zinc-800/40 bg-zinc-50 dark:bg-zinc-900/60'
+                      : 'border-zinc-100 dark:border-zinc-800/40 bg-zinc-50 dark:bg-zinc-900/60 hover:bg-zinc-100 dark:hover:bg-zinc-800/60'
                   }`}
                 >
                   <div className="flex items-center gap-3">
@@ -200,6 +214,232 @@ export default function Leaderboard({ currentUserScore, currentUserCountry }: Le
           Hit your daily portions within macros limit for an instant +150 XP bonus reward before midnight lock.
         </p>
       </div>
+
+      {/* 2. Overlaid Competitor Visitor Profile Modal Sheet */}
+      {selectedVisitor && (
+        <div className="fixed inset-0 bg-black/75 backdrop-blur-xs z-[2000] flex flex-col justify-end" onClick={() => setSelectedVisitor(null)}>
+          <motion.div 
+            initial={{ y: "100%" }}
+            animate={{ y: 0 }}
+            className="bg-zinc-50 dark:bg-zinc-950 max-h-[90vh] overflow-y-auto rounded-t-[32px] border-t border-zinc-200 dark:border-zinc-800 p-5 pb-12 flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Top exit trigger bar */}
+            <div className="flex justify-between items-center mb-4 pl-1">
+              <span className="text-[10px] uppercase font-black text-zinc-400 tracking-wider font-mono">
+                Competitor Profile Visited
+              </span>
+              <button 
+                onClick={() => setSelectedVisitor(null)}
+                className="bg-zinc-250 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 rounded-full px-3.5 py-1 font-extrabold text-xs cursor-pointer focus:outline-none"
+              >
+                Close
+              </button>
+            </div>
+
+            {/* Profile Summary Card */}
+            {(() => {
+              const visitorStats = calculateUserRankAndLevel(selectedVisitor.score);
+              const visitorProfile = selectedVisitor.profile || {};
+              const targetBodyText = visitorProfile.targetBody ? visitorProfile.targetBody.replace('_', ' ') : 'shaping model';
+
+              return (
+                <div className="flex flex-col gap-4">
+                  {/* Avatar & Key Rank Header */}
+                  <div className="bg-white dark:bg-zinc-900 border border-zinc-150 dark:border-zinc-800 p-4.5 rounded-3xl flex flex-col items-center relative overflow-hidden shadow-xs">
+                    
+                    {/* Glowing XP Badge */}
+                    <div className={`absolute top-4 right-4 border text-[9px] px-2.5 py-1 rounded-full font-black tracking-wider uppercase ${visitorStats.rankGlowClass}`}>
+                      Rank {visitorStats.rank}
+                    </div>
+
+                    {/* Avatar Bubble */}
+                    <div className="w-16 h-16 rounded-full bg-zinc-100 dark:bg-zinc-850 flex items-center justify-center text-3xl border border-zinc-200 mt-2">
+                      {selectedVisitor.avatarUrl || '🧑🏼'}
+                    </div>
+
+                    <h3 className="text-sm font-black text-zinc-900 dark:text-white mt-3 flex items-center gap-1">
+                      {selectedVisitor.name}
+                    </h3>
+                    <span className="text-[10px] text-zinc-400 font-sans mt-0.5 uppercase tracking-wide">
+                      {selectedVisitor.country}
+                    </span>
+
+                    <p className="text-xs text-zinc-500 dark:text-zinc-400 text-center max-w-xs mt-3 leading-relaxed font-semibold italic">
+                      "{visitorProfile.bio || 'This competitor is charging hard in the Vigor Gym arena to set maximum macro limits!'}"
+                    </p>
+
+                    {/* Quick Core Indicators */}
+                    <div className="grid grid-cols-3 gap-2.5 w-full mt-4 pt-3.5 border-t border-zinc-100 dark:border-zinc-800/60 text-center">
+                      <div>
+                        <span className="text-[8px] font-bold text-zinc-400 uppercase block">Points</span>
+                        <span className="text-xs font-black font-mono text-lime-600 dark:text-lime-400 mt-1 block">{selectedVisitor.score} XP</span>
+                      </div>
+                      <div>
+                        <span className="text-[8px] font-bold text-zinc-400 uppercase block">Level</span>
+                        <span className="text-xs font-black font-mono text-zinc-800 dark:text-zinc-200 mt-1 block">Level {visitorStats.level}</span>
+                      </div>
+                      <div>
+                        <span className="text-[8px] font-bold text-zinc-400 uppercase block">Target</span>
+                        <span className="text-[10px] font-black text-zinc-700 dark:text-zinc-300 capitalize truncate block mt-1">{targetBodyText}</span>
+                      </div>
+                    </div>
+
+                  </div>
+
+                  {/* Competitor Posts Grid */}
+                  <div>
+                    <h4 className="text-[10px] uppercase font-black text-zinc-400 tracking-wider mb-2.5 px-1.5 flex items-center justify-between">
+                      <span>Timeline Visual Progress</span>
+                      <span className="text-zinc-500 font-bold">({selectedVisitor.posts?.length || 0} Posts)</span>
+                    </h4>
+
+                    {!selectedVisitor.posts || selectedVisitor.posts.length === 0 ? (
+                      <div className="bg-white dark:bg-zinc-900 border border-zinc-150 dark:border-zinc-850 p-8 rounded-3xl text-center text-zinc-400">
+                        <span className="text-2xl block mb-1">📷</span>
+                        <h5 className="text-[11px] font-black uppercase text-zinc-700 dark:text-zinc-300">No photos published yet</h5>
+                        <p className="text-[9px] text-zinc-400 max-w-[200px] mx-auto mt-0.5 leading-normal">
+                          When this competitor uploads daily checked progress images, they will appear right here.
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-3 gap-1.5 bg-white dark:bg-zinc-900 border border-zinc-150 dark:border-zinc-800 p-1.5 rounded-2xl shadow-xs">
+                        {selectedVisitor.posts.map((post) => {
+                          const cheerCount = post.cheers ? Object.keys(post.cheers).length : 0;
+                          return (
+                            <div
+                              key={post.id}
+                              onClick={() => setSelectedVisitorPost(post)}
+                              className="aspect-square bg-zinc-950 overflow-hidden relative rounded-xl border border-zinc-100 dark:border-zinc-800/40 cursor-pointer group"
+                            >
+                              <img
+                                src={post.imageUrl}
+                                alt={post.title}
+                                className="w-full h-full object-cover"
+                                referrerPolicy="no-referrer"
+                              />
+                              {/* Cheer indicator count badge - ALWAYS visible bottom right layout */}
+                              <div className="absolute bottom-1 right-1 bg-black/60 backdrop-blur-xs px-1.5 py-0.5 rounded-md flex items-center gap-0.5 text-white text-[9px] font-black font-mono">
+                                <Heart className="w-2.5 h-2.5 fill-lime-400 text-lime-400" />
+                                <span>{cheerCount}</span>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+
+                </div>
+              );
+            })()}
+          </motion.div>
+        </div>
+      )}
+
+      {/* 3. Overlaid clicked competitor's post detail sheet (Liking / "Cheer Up") */}
+      {selectedVisitorPost && selectedVisitor && (
+        <div 
+          className="fixed inset-0 bg-black/90 z-[3000] flex flex-col justify-between p-4"
+          onClick={() => setSelectedVisitorPost(null)}
+        >
+          <div className="flex justify-between items-center w-full z-10 p-2" onClick={(e) => e.stopPropagation()}>
+            <span className="text-[10px] uppercase font-black text-lime-400 tracking-widest bg-lime-950/45 px-2.5 py-1 rounded border border-lime-800/45">
+              COMPETITOR GYM CHECKIN
+            </span>
+            <button 
+              onClick={() => setSelectedVisitorPost(null)}
+              className="text-white bg-white/10 hover:bg-white/20 p-2 rounded-full cursor-pointer leading-none text-xs"
+            >
+              ✕
+            </button>
+          </div>
+
+          <div className="flex-1 flex items-center justify-center p-2" onClick={(e) => e.stopPropagation()}>
+            <img
+              src={selectedVisitorPost.imageUrl}
+              alt={selectedVisitorPost.title}
+              className="max-h-[60vh] max-w-full object-contain rounded-2xl shadow-2xl border border-white/10"
+              referrerPolicy="no-referrer"
+            />
+          </div>
+
+          <div 
+            className="bg-zinc-900/95 backdrop-blur-md text-white p-5 rounded-3xl border border-white/10 max-w-md mx-auto w-full z-10 cursor-default"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex justify-between items-center mb-1">
+              <span className="text-[9px] uppercase font-black text-zinc-400 tracking-wider font-mono">
+                BY {selectedVisitor.name} • {selectedVisitorPost.date}
+              </span>
+            </div>
+            
+            <h3 className="text-sm font-black uppercase text-lime-400 leading-tight tracking-tight mt-1">
+              {selectedVisitorPost.title}
+            </h3>
+            
+            {selectedVisitorPost.description ? (
+              <p className="text-xs text-zinc-350 leading-relaxed mt-2.5 bg-black/30 p-3 rounded-xl border border-white/5 font-medium">
+                {selectedVisitorPost.description}
+              </p>
+            ) : (
+              <p className="text-xs italic text-zinc-550 mt-1 font-medium font-sans">
+                No session details added.
+              </p>
+            )}
+
+            <div className="flex justify-between items-center mt-4 pt-3.5 border-t border-white/5">
+              <div className="flex items-center gap-1.5">
+                <Heart className="w-5 h-5 fill-lime-400 text-lime-400 animate-pulse" />
+                <span className="text-xs font-extrabold font-mono text-zinc-200">
+                  {selectedVisitorPost.cheers ? Object.keys(selectedVisitorPost.cheers).length : 0} Cheer Ups
+                </span>
+              </div>
+              
+              {(() => {
+                const myUid = auth.currentUser?.uid;
+                const hasCheered = myUid && selectedVisitorPost.cheers?.hasOwnProperty(myUid);
+                return (
+                  <button
+                    onClick={() => {
+                      if (!myUid || !selectedVisitor.uid) return;
+                      const postRef = ref(database, `users/${selectedVisitor.uid}/posts/${selectedVisitorPost.id}/cheers/${myUid}`);
+                      set(postRef, hasCheered ? null : true);
+
+                      // Optimistically update the submodal selectedVisitorPost state
+                      const updatedCheers = { ...(selectedVisitorPost.cheers || {}) };
+                      if (hasCheered) {
+                        delete updatedCheers[myUid];
+                      } else {
+                        updatedCheers[myUid] = true;
+                      }
+                      const updatedPost = { ...selectedVisitorPost, cheers: updatedCheers };
+                      setSelectedVisitorPost(updatedPost);
+
+                      // Update selectedVisitor underlying posts as well so the grid matches!
+                      if (selectedVisitor.posts) {
+                        const updatedPosts = selectedVisitor.posts.map(p => p.id === selectedVisitorPost.id ? updatedPost : p);
+                        setSelectedVisitor({
+                          ...selectedVisitor,
+                          posts: updatedPosts
+                        });
+                      }
+                    }}
+                    className={`font-black text-[11px] uppercase tracking-wide py-1.5 px-4 rounded-xl shadow-md transition cursor-pointer flex items-center gap-1.5 border-transparent ${
+                      hasCheered 
+                        ? 'bg-zinc-800 text-lime-400 border border-lime-500/20' 
+                        : 'bg-lime-500 hover:bg-lime-600 text-zinc-950'
+                    }`}
+                  >
+                    <Heart className={`w-3.5 h-3.5 ${hasCheered ? 'fill-current' : 'fill-current'}`} />
+                    {hasCheered ? 'Cheered!' : 'Cheer Up'}
+                  </button>
+                );
+              })()}
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );

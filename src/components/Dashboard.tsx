@@ -5,7 +5,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { UserProfile, DailyLog, WorkoutExercise } from '../types';
-import { calculateProfileTargets, generateWorkoutPlan, getImprovementAdvice } from '../utils';
+import { calculateProfileTargets, generateWorkoutPlan, getImprovementAdvice, calculateUserRankAndLevel, ALL_RANKS_MILESTONES } from '../utils';
 import { 
   Droplet, Footprints, CheckSquare, Plus, Edit3, Save, 
   Trash2, Dumbbell, Sparkles, TrendingUp, ChevronRight, HelpCircle, 
@@ -36,86 +36,7 @@ export default function Dashboard({
   const workoutPlan = generateWorkoutPlan(userProfile);
 
   // 1. Level Calculation Scale based on accumulated points
-  const getProgressLevel = (xp: number) => {
-    if (xp < 150) {
-      return {
-        level: 1,
-        title: 'Warmup Initiate',
-        desc: 'Focus on gentle rehabilitation, posture, and simple joint mobility.',
-        intensity: 'Gentle Pacing (1-2 Sets, Moderate Reps)',
-        badge: '🌱',
-        xpRequired: 0,
-        nextXp: 150,
-        unlockedExercises: ['ex_brisk_walk', 'ex_joint_star'],
-        previewNext: { name: 'Pushups, Planks & Body Squats', xpReq: 150 }
-      };
-    }
-    if (xp < 450) {
-      return {
-        level: 2,
-        title: 'Calisthenic Rookie',
-        desc: 'Introducing baseline bodyweight conditioning and core stabilizers.',
-        intensity: 'Moderate Stability (3 Sets, Base Reps)',
-        badge: '🤸🏼‍♀️',
-        xpRequired: 150,
-        nextXp: 450,
-        unlockedExercises: ['ex_brisk_walk', 'ex_joint_star', 'ex_squats', 'ex_pushups', 'ex_plank', 'ex_glute_bridge'],
-        previewNext: { name: 'Dumbbell Rows, Chair Dips & Superman', xpReq: 450 }
-      };
-    }
-    if (xp < 850) {
-      return {
-        level: 3,
-        title: 'Vigor Shaper',
-        desc: 'Muscular endurance and specific structural shaper splitting.',
-        intensity: 'Target Enduring (3 Sets, 12-15 Reps)',
-        badge: '🦾',
-        xpRequired: 450,
-        nextXp: 850,
-        unlockedExercises: ['ex_brisk_walk', 'ex_joint_star', 'ex_squats', 'ex_pushups', 'ex_plank', 'ex_glute_bridge', 'ex_dumbbell_rows', 'ex_bench_dips', 'ex_superman'],
-        previewNext: { name: 'Dumbbell Floor Press & Hammer Curls', xpReq: 850 }
-      };
-    }
-    if (xp < 1400) {
-      return {
-        level: 4,
-        title: 'Power Dynamo',
-        desc: 'Progressive load resistance with dumbbell workouts for hypertrophy.',
-        intensity: 'Hypertrophy Force (4 Sets, Solid Reps)',
-        badge: '🏋️',
-        xpRequired: 850,
-        nextXp: 1400,
-        unlockedExercises: ['ex_brisk_walk', 'ex_joint_star', 'ex_squats', 'ex_pushups', 'ex_plank', 'ex_glute_bridge', 'ex_dumbbell_rows', 'ex_bench_dips', 'ex_superman', 'ex_dumbbell_press', 'ex_bicep_curl', 'ex_lunges'],
-        previewNext: { name: 'Gladiator High-Fatigue Star Jacks', xpReq: 1400 }
-      };
-    }
-    if (xp < 2000) {
-      return {
-        level: 5,
-        title: 'Titanium Centurion',
-        desc: 'High-fatigue supersets with shortened rest duration intervals.',
-        intensity: 'Extreme Fatigue (4-5 Sets, 40s Rest)',
-        badge: '🔥',
-        xpRequired: 1400,
-        nextXp: 2000,
-        unlockedExercises: ['ex_brisk_walk', 'ex_joint_star', 'ex_squats', 'ex_pushups', 'ex_plank', 'ex_glute_bridge', 'ex_dumbbell_rows', 'ex_bench_dips', 'ex_superman', 'ex_dumbbell_press', 'ex_bicep_curl', 'ex_lunges', 'ex_jumping_jacks'],
-        previewNext: { name: 'Peak Homeostasis Giant Combos', xpReq: 2000 }
-      };
-    }
-    return {
-      level: 6,
-      title: 'Ultimate Vigor Hero',
-      desc: 'Peak championship physical performance and maximum conditioning speed.',
-      intensity: 'Peak Gladiator (Giant Overload Supersets)',
-      badge: '⚡️',
-      xpRequired: 2000,
-      nextXp: 99999,
-      unlockedExercises: ['ex_brisk_walk', 'ex_joint_star', 'ex_squats', 'ex_pushups', 'ex_plank', 'ex_glute_bridge', 'ex_dumbbell_rows', 'ex_bench_dips', 'ex_superman', 'ex_dumbbell_press', 'ex_bicep_curl', 'ex_lunges', 'ex_jumping_jacks'],
-      previewNext: null
-    };
-  };
-
-  const activeLevel = getProgressLevel(totalPoints);
+  const activeLevel = calculateUserRankAndLevel(totalPoints);
 
   // 2. Dynamic exercise plan unlocks based on points level
   const progressiveWorkoutPlan = useMemo(() => {
@@ -157,14 +78,16 @@ export default function Dashboard({
   }, [progressiveWorkoutPlan, activeLevel.level]);
 
   // 4. Milestone definition array for Leveling Evolutionary Tree Roadmap
-  const levelMilestones = [
-    { num: 1, name: 'Ground Start', xp: 0, badge: '🌱', unlocks: 'Walking & Joint Mobility rolls', intensity: 'Gentle Pacing Warmup (1-2 Sets)' },
-    { num: 2, name: 'Calisthenics', xp: 150, badge: '🤸🏼‍♀️', unlocks: 'Squats, Pushups, Core Planks & Bridges', intensity: 'Rookie (3 Sets, Base Reps)' },
-    { num: 3, name: 'Muscle Endure', xp: 450, badge: '🦾', unlocks: 'Dumbbell Rows, Couch Tricep Bench Dips & Supermans', intensity: 'Hypertrophy Tone (4 Sets)' },
-    { num: 4, name: 'Strength Forge', xp: 850, badge: '🏋️', unlocks: 'Floor Chest Press, Bicep Hammer curls & Reverse Lunges', intensity: 'Heavy Overload (4 Sets)' },
-    { num: 5, name: 'Gladiator', xp: 1400, badge: '🔥', unlocks: 'Explosive Jumping Jacks & Short-rest Supersets', intensity: 'Extreme Burn (4-5 Sets)' },
-    { num: 6, name: 'Peak Hero', xp: 2000, badge: '⚡️', unlocks: 'Peak homeostasis, athletic compound fitness, ultimate intense speed', intensity: 'Gladiator Peak Max (Complex Series)' }
-  ];
+  const levelMilestones = useMemo(() => {
+    return ALL_RANKS_MILESTONES.map((ml) => ({
+      num: ml.level,
+      name: `${ml.name} [${ml.rank}]`,
+      xp: ml.xp,
+      badge: ml.badge,
+      unlocks: `${ml.desc} Unlocks: ${ml.unlocks}`,
+      intensity: ml.intensity
+    }));
+  }, []);
 
   // Manual inputs for editing targets & metrics with gate protecting to stop desynchronization
   const [isEditingSteps, setIsEditingSteps] = useState(false);
@@ -302,9 +225,7 @@ export default function Dashboard({
   };
 
   // Next level countdown computations
-  const levelProgressPercent = activeLevel.level === 6 
-    ? 100 
-    : Math.min(100, Math.round(((totalPoints - activeLevel.xpRequired) / (activeLevel.nextXp - activeLevel.xpRequired)) * 100));
+  const levelProgressPercent = activeLevel.progressPercentage;
 
   return (
     <div className="flex-1 flex flex-col gap-4 font-sans p-4 pb-12 bg-zinc-50 dark:bg-[#09090b]">
