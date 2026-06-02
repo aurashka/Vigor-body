@@ -10,6 +10,7 @@ import {
   Settings as SettingsIcon, Moon, Sun, RefreshCw, Save, 
   HelpCircle, Shield, AlertTriangle, Check, Sliders
 } from 'lucide-react';
+import { auth } from '../firebase';
 import { motion } from 'motion/react';
 
 interface SettingsProps {
@@ -18,6 +19,7 @@ interface SettingsProps {
   theme: 'light' | 'dark';
   onChangeTheme: (mode: 'light' | 'dark') => void;
   onResetSystemTargetsOnly: () => void;
+  onLogout?: () => void;
 }
 
 export default function Settings({
@@ -26,6 +28,7 @@ export default function Settings({
   theme,
   onChangeTheme,
   onResetSystemTargetsOnly,
+  onLogout,
 }: SettingsProps) {
   
   // Local state form buffers for profile fields
@@ -103,24 +106,51 @@ export default function Settings({
           <span className="text-xs font-bold text-zinc-700 dark:text-zinc-300">Set Core Theme Mode</span>
           <div className="flex bg-white dark:bg-zinc-900 p-1 rounded-xl border border-zinc-100 dark:border-zinc-700">
             <button
-              onClick={() => onChangeTheme('light')}
-              className={`p-2 rounded-lg flex items-center justify-center transition ${
-                theme === 'light' ? 'bg-indigo-600 text-white shadow-xs' : 'text-zinc-400 hover:text-zinc-600'
-              }`}
-              id="theme-light-btn"
-            >
+               onClick={() => onChangeTheme('light')}
+               className={`p-2 rounded-lg flex items-center justify-center transition ${
+                 theme === 'light' ? 'bg-lime-500 text-zinc-950 shadow-xs' : 'text-zinc-400 hover:text-zinc-650'
+               }`}
+               id="theme-light-btn"
+             >
               <Sun className="w-4 h-4 cursor-pointer" />
             </button>
             <button
-              onClick={() => onChangeTheme('dark')}
-              className={`p-2 rounded-lg flex items-center justify-center transition ${
-                theme === 'dark' ? 'bg-indigo-600 text-white shadow-xs' : 'text-zinc-400 hover:text-zinc-600'
-              }`}
-              id="theme-dark-btn"
-            >
+               onClick={() => onChangeTheme('dark')}
+               className={`p-2 rounded-lg flex items-center justify-center transition ${
+                 theme === 'dark' ? 'bg-lime-500 text-zinc-950 shadow-xs' : 'text-zinc-400 hover:text-zinc-650'
+               }`}
+               id="theme-dark-btn"
+             >
               <Moon className="w-4 h-4 cursor-pointer" />
             </button>
           </div>
+        </div>
+      </div>
+
+      {/* Cloud Synchronization and Session Management Card */}
+      <div className="bg-white dark:bg-zinc-900 p-4.5 rounded-3xl border border-zinc-100 dark:border-zinc-800 shadow-sm">
+        <h3 className="text-xs font-black text-zinc-400 uppercase tracking-widest mb-3 flex items-center gap-1.5 leading-none">
+          ☁️ Cloud Synchronization
+        </h3>
+        <div className="flex justify-between items-center bg-emerald-500/5 dark:bg-emerald-950/20 p-3 rounded-2xl border border-emerald-500/10">
+          <div className="flex flex-col gap-0.5 max-w-[65%]">
+            <span className="text-[11px] font-extrabold text-emerald-700 dark:text-emerald-400 flex items-center gap-1">
+              Active Cloud Session
+            </span>
+            <span className="text-[10px] text-zinc-550 dark:text-zinc-400 font-mono truncate select-all block mt-0.5">
+              {auth.currentUser?.email || 'Logged in Profile'}
+            </span>
+          </div>
+          {onLogout && (
+            <button
+              type="button"
+              onClick={onLogout}
+              className="px-3 py-1.5 rounded-xl text-[10px] font-black uppercase text-zinc-950 bg-lime-500 hover:bg-lime-600 dark:bg-lime-400 dark:hover:bg-lime-500 transition shadow-xs cursor-pointer select-none"
+              id="settings-logout-btn"
+            >
+              Logout
+            </button>
+          )}
         </div>
       </div>
 
@@ -128,7 +158,7 @@ export default function Settings({
       <div className="bg-white dark:bg-zinc-900 p-4.5 rounded-3xl border border-zinc-100 dark:border-zinc-800 shadow-sm">
         <div className="flex justify-between items-center mb-1">
           <h3 className="text-xs font-black text-zinc-400 uppercase tracking-widest flex items-center gap-1.5 leading-none">
-            <Sliders className="w-4 h-4 text-indigo-500" /> Target Portions Overrides
+            <Sliders className="w-4 h-4 text-lime-500" /> Target Portions Overrides
           </h3>
         </div>
         <p className="text-[10px] text-zinc-400 mb-3 leading-tight">
@@ -252,8 +282,9 @@ export default function Settings({
             <input
               id="settings-weight"
               type="number"
+              step="0.1"
               value={weight}
-              onChange={(e) => setWeight(parseInt(e.target.value) || 68)}
+              onChange={(e) => setWeight(parseFloat(e.target.value) || 68)}
               className="px-3 py-2 rounded-xl border border-zinc-100 dark:border-zinc-800 dark:bg-zinc-850 text-xs font-semibold"
             />
           </div>
@@ -346,7 +377,7 @@ export default function Settings({
           <button
             type="submit"
             onClick={handleSaveProfile}
-            className="flex-1 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-extrabold flex items-center justify-center gap-1.5 transition shadow-sm cursor-pointer"
+            className="flex-1 py-3 bg-lime-500 hover:bg-lime-600 dark:bg-lime-450 dark:hover:bg-lime-500 text-zinc-950 font-extrabold flex items-center justify-center gap-1.5 transition shadow-sm cursor-pointer"
             id="settings-save-profile-btn"
           >
             <Check className="w-4 h-4 animate-bounce" /> Update Adaptive Plan

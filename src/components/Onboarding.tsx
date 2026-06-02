@@ -54,16 +54,16 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
   const isNameValid = name.trim().length > 0;
 
   return (
-    <div className="flex-1 flex flex-col justify-between p-5 bg-gradient-to-b from-indigo-50/60 to-white dark:from-zinc-900/60 dark:to-zinc-950 font-sans h-full overflow-y-auto">
+    <div className="flex-1 flex flex-col justify-between p-5 bg-gradient-to-b from-lime-50/30 to-white dark:from-zinc-900/60 dark:to-zinc-950 font-sans h-full overflow-y-auto">
       
       {/* Top Banner & Multi-step indicator */}
       <div className="flex flex-col gap-2 pt-2">
-        <div className="flex justify-between items-center text-xs font-semibold text-indigo-600 dark:text-indigo-400">
+        <div className="flex justify-between items-center text-xs font-semibold text-lime-700 dark:text-lime-400">
           <span className="uppercase tracking-widest font-mono">Plan Calibration</span>
           <span>Step {step} of 4</span>
         </div>
         <div className="flex gap-1.5 h-1.5 bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden">
-          <div className="bg-indigo-600 dark:bg-indigo-500 rounded-full transition-all duration-300" style={{ width: `${(step / 4) * 100}%` }}></div>
+          <div className="bg-lime-500 dark:bg-lime-400 rounded-full transition-all duration-300" style={{ width: `${(step / 4) * 100}%` }}></div>
         </div>
       </div>
 
@@ -99,7 +99,7 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
                   placeholder="Enter your name..."
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  className="w-full px-4 py-3 rounded-xl border border-zinc-200 dark:border-zinc-800 dark:bg-zinc-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 text-sm font-semibold transition"
+                  className="w-full px-4 py-3 rounded-xl border border-zinc-200 dark:border-zinc-800 dark:bg-zinc-900 focus:outline-none focus:ring-2 focus:ring-lime-500/50 text-sm font-semibold transition"
                 />
               </div>
 
@@ -109,7 +109,7 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
                   <label className="text-xs font-bold text-zinc-600 dark:text-zinc-300 uppercase tracking-wider" htmlFor="input-age">
                     Your Age
                   </label>
-                  <span className="text-sm font-extrabold text-indigo-600 dark:text-indigo-400">{age} years</span>
+                  <span className="text-sm font-extrabold text-lime-700 dark:text-lime-400">{age} years</span>
                 </div>
                 <input
                   id="input-age"
@@ -118,7 +118,7 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
                   max="85"
                   value={age}
                   onChange={(e) => setAge(parseInt(e.target.value))}
-                  className="w-full accent-indigo-600"
+                  className="w-full accent-lime-500"
                 />
                 <div className="flex justify-between text-[10px] font-semibold text-zinc-400 font-mono">
                   <span>12 yrs</span>
@@ -140,7 +140,7 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
                       onClick={() => setGender(g)}
                       className={`py-3 rounded-xl border text-xs font-extrabold tracking-wide uppercase transition flex flex-col items-center gap-1.5 ${
                         gender === g
-                          ? 'border-indigo-600 bg-indigo-50/50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 dark:border-indigo-500 shadow-sm'
+                          ? 'border-lime-500 bg-lime-50/20 dark:bg-lime-950/20 text-lime-700 dark:text-lime-400 dark:border-lime-400 shadow-sm'
                           : 'border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-zinc-500 dark:text-zinc-400'
                       }`}
                       id={`gender-btn-${g}`}
@@ -164,7 +164,7 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
             >
               <div className="flex flex-col gap-1">
                 <h2 className="text-xl font-extrabold tracking-tight text-zinc-900 dark:text-white flex items-center gap-2">
-                  Metrics & Exercise <Dumbbell className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+                  Metrics & Exercise <Dumbbell className="w-5 h-5 text-lime-600 dark:text-lime-400" />
                 </h2>
                 <p className="text-xs text-zinc-500 dark:text-zinc-400">
                   Calibrate your physical composition to derive safe active calories.
@@ -175,7 +175,7 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
               <div className="flex flex-col gap-2">
                 <div className="flex justify-between items-center text-xs">
                   <span className="font-bold text-zinc-600 dark:text-zinc-300 uppercase tracking-wider">Height (cm)</span>
-                  <span className="font-mono font-extrabold text-indigo-600 dark:text-indigo-400">{height} cm</span>
+                  <span className="font-mono font-extrabold text-lime-700 dark:text-lime-400">{height} cm</span>
                 </div>
                 <input
                   type="range"
@@ -183,7 +183,7 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
                   max="220"
                   value={height}
                   onChange={(e) => setHeight(parseInt(e.target.value))}
-                  className="w-full accent-indigo-600"
+                  className="w-full accent-lime-500"
                   id="height-slider"
                 />
                 <div className="flex justify-between text-[10px] font-mono text-zinc-400">
@@ -197,15 +197,16 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
               <div className="flex flex-col gap-2">
                 <div className="flex justify-between items-center text-xs">
                   <span className="font-bold text-zinc-600 dark:text-zinc-300 uppercase tracking-wider">Weight (kg)</span>
-                  <span className="font-mono font-extrabold text-indigo-600 dark:text-indigo-400">{weight} kg</span>
+                  <span className="font-mono font-extrabold text-lime-700 dark:text-lime-400">{weight} kg</span>
                 </div>
                 <input
                   type="range"
                   min="35"
                   max="150"
+                  step="0.5"
                   value={weight}
-                  onChange={(e) => setWeight(parseInt(e.target.value))}
-                  className="w-full accent-indigo-600"
+                  onChange={(e) => setWeight(parseFloat(e.target.value))}
+                  className="w-full accent-lime-500"
                   id="weight-slider"
                 />
                 <div className="flex justify-between text-[10px] font-mono text-zinc-400">
@@ -231,7 +232,7 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
                         onClick={() => setExerciseLevel(level)}
                         className={`p-3.5 rounded-xl border text-left transition ${
                           exerciseLevel === level
-                            ? 'border-indigo-600 bg-indigo-50/40 dark:bg-indigo-950/40 dark:border-indigo-500 shadow-sm'
+                            ? 'border-lime-500 bg-lime-50/20 dark:bg-lime-950/20 dark:border-lime-400 shadow-sm'
                             : 'border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900'
                         }`}
                         id={`exercise-level-${level}`}
@@ -240,7 +241,7 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
                           <span className="text-xs font-extrabold uppercase tracking-wide text-zinc-900 dark:text-white">
                             {level}
                           </span>
-                          {exerciseLevel === level && <Check className="w-4 h-4 text-indigo-600 dark:text-indigo-400 font-bold" />}
+                          {exerciseLevel === level && <Check className="w-4 h-4 text-lime-600 dark:text-lime-400 font-bold" />}
                         </div>
                         <p className="text-[10px] text-zinc-400 leading-normal">{desc}</p>
                       </button>
@@ -262,7 +263,7 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
             >
               <div className="flex flex-col gap-1">
                 <h2 className="text-xl font-extrabold tracking-tight text-zinc-900 dark:text-white flex items-center gap-2">
-                  Country & Preference <Activity className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+                  Country & Preference <Activity className="w-5 h-5 text-lime-600 dark:text-lime-400" />
                 </h2>
                 <p className="text-xs text-zinc-500 dark:text-zinc-400">
                   We use your location to offer exact day-to-day traditional nutrition & localized meals.
@@ -279,7 +280,7 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
                     id="select-country"
                     value={country}
                     onChange={(e) => setCountry(e.target.value)}
-                    className="w-full px-4 py-3 bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition appearance-none cursor-pointer"
+                    className="w-full px-4 py-3 bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-lime-500/50 transition appearance-none cursor-pointer"
                   >
                     {COUNTRIES.map((c) => (
                       <option key={c.code} value={c.code} className="py-2">
@@ -306,7 +307,7 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
                       onClick={() => setDietPreference(pref)}
                       className={`py-3.5 rounded-xl border text-xs font-extrabold tracking-wide uppercase transition ${
                         dietPreference === pref
-                          ? 'border-indigo-600 bg-indigo-50/40 dark:bg-indigo-950/40 dark:border-indigo-500 text-indigo-600 dark:text-indigo-400 shadow-sm'
+                          ? 'border-lime-500 bg-lime-50/20 dark:bg-lime-950/20 dark:border-lime-400 text-lime-700 dark:text-lime-400 shadow-sm'
                           : 'border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-zinc-500 dark:text-zinc-400'
                       }`}
                       id={`diet-pref-${pref}`}
@@ -339,7 +340,7 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
                         onClick={() => setTargetBody(target)}
                         className={`p-3 rounded-xl border text-center transition flex flex-col items-center justify-center gap-1.5 ${
                           targetBody === target
-                            ? 'border-indigo-600 bg-indigo-50/40 dark:bg-indigo-950/40 dark:border-indigo-500 text-indigo-600 dark:text-indigo-400 shadow-sm'
+                            ? 'border-lime-500 bg-lime-50/20 dark:bg-lime-950/20 dark:border-lime-400 text-lime-700 dark:text-lime-400 shadow-sm'
                             : 'border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-zinc-500 dark:text-zinc-400'
                         }`}
                         id={`target-body-${target}`}
@@ -426,10 +427,10 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
         <button
           onClick={handleNext}
           disabled={step === 1 && !isNameValid}
-          className={`flex-2 flex items-center justify-center gap-1.5 py-3 rounded-xl font-extrabold text-xs text-white transition shadow-md ${
+          className={`flex-2 flex items-center justify-center gap-1.5 py-3 rounded-xl font-extrabold text-xs text-zinc-950 transition shadow-md ${
             step === 1 && !isNameValid
-              ? 'bg-zinc-300 dark:bg-zinc-800 cursor-not-allowed shadow-none'
-              : 'bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600'
+              ? 'bg-zinc-300 dark:bg-zinc-800 text-zinc-400 cursor-not-allowed shadow-none'
+              : 'bg-lime-500 hover:bg-lime-600 dark:bg-lime-400 dark:hover:bg-lime-500'
           }`}
           id="onboarding-next-btn"
         >

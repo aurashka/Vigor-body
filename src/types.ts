@@ -25,6 +25,8 @@ export interface UserProfile {
   proteinTargetCustom?: number;
   carbsTargetCustom?: number;
   fatTargetCustom?: number;
+  avatarUrl?: string;
+  bio?: string;
 }
 
 export interface FoodItem {
@@ -34,7 +36,7 @@ export interface FoodItem {
   fat: number; // grams per serving
   carbs: number; // grams per serving
   calories: number; // kcal per serving
-  category: 'protein' | 'carbs' | 'fat';
+  category: 'protein' | 'carbs' | 'fat' | 'vegetable_fruit';
   isLocal: boolean;
   countries: string[]; // countries where this is local
   servingSize: string; // e.g. "1 bowl", "100g", "2 pieces"
@@ -103,4 +105,12 @@ export interface RewardBadge {
   description: string;
   unlockedAt?: string;
   iconName: string;
+}
+
+export interface ProfilePost {
+  id: string;
+  title: string;
+  imageUrl: string;
+  date: string; // YYYY-MM-DD
+  createdAt: string; // ISO string
 }

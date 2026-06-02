@@ -3,10 +3,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { LeaderboardUser } from '../types';
-import { STATIC_LEADERBOARD, COUNTRIES } from '../data';
+import { COUNTRIES } from '../data';
 import { Trophy, Medal, Flame, Search, Sparkles } from 'lucide-react';
+import { database, auth } from '../firebase';
+import { ref, onValue } from 'firebase/database';
 
 interface LeaderboardProps {
   currentUserScore: number;
@@ -14,28 +16,77 @@ interface LeaderboardProps {
 }
 
 export default function Leaderboard({ currentUserScore, currentUserCountry }: LeaderboardProps) {
-  // Translate country code to Full Name
-  const userCountryName = COUNTRIES.find((c) => c.code === currentUserCountry)?.name || 'Your Country';
-  const userCountryFlag = COUNTRIES.find((c) => c.code === currentUserCountry)?.flag || '🌍';
+  const [competitors, setCompetitors] = useState<LeaderboardUser[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Build list dynamically with user score injected
-  const dynamicLeaderboard: LeaderboardUser[] = React.useMemo(() => {
-    return STATIC_LEADERBOARD.map((p) => {
-      if (p.isCurrentUser) {
-        return {
-          ...p,
-          country: `${userCountryFlag} ${userCountryName}`,
-          score: currentUserScore,
-        };
+  // Sync / Listen to all users from Realtime Database to extract real players
+  useEffect(() => {
+    const usersRef = ref(database, 'users');
+    const unsubscribe = onValue(usersRef, (snapshot) => {
+      setIsLoading(true);
+      try {
+        if (snapshot.exists()) {
+          const allUsersRaw = snapshot.val();
+          const parsed: LeaderboardUser[] = Object.keys(allUsersRaw).map((uid) => {
+            const userData = allUsersRaw[uid];
+            const profile = userData.profile || {};
+            const name = profile.name || 'Anonymous Champion';
+            const countryCode = profile.country || 'IN';
+            const countryObj = COUNTRIES.find((c) => c.code === countryCode);
+            const countryName = countryObj ? countryObj.name : 'Unknown';
+            const countryFlag = countryObj ? countryObj.flag : '🌍';
+            const score = userData.totalPoints !== undefined ? userData.totalPoints : 50;
+            const gender = profile.gender || 'male';
+            const avatarUrl = gender === 'female' ? '👧🏻' : gender === 'non_binary' ? '🧑🏼' : '👦🏻';
+
+            return {
+              rank: 0,
+              name,
+              country: `${countryFlag} ${countryName}`,
+              score,
+              isCurrentUser: uid === auth.currentUser?.uid,
+              avatarUrl,
+            };
+          });
+
+          // Sort by score in descending order and compute rank position
+          const sorted = parsed
+            .sort((a, b) => b.score - a.score)
+            .map((player, idx) => ({
+              ...player,
+              rank: idx + 1,
+            }));
+
+          setCompetitors(sorted);
+        } else {
+          // Fallback to current real player if database has no records
+          const myCountryObj = COUNTRIES.find((c) => c.code === currentUserCountry);
+          setCompetitors([
+            {
+              rank: 1,
+              name: 'You',
+              country: `${myCountryObj?.flag || '🌍'} ${myCountryObj?.name || 'Your Country'}`,
+              score: currentUserScore,
+              isCurrentUser: true,
+              avatarUrl: '👦🏻',
+            }
+          ]);
+        }
+      } catch (err) {
+        console.error('Error fetching real players:', err);
+      } finally {
+        setIsLoading(false);
       }
-      return p;
-    }).sort((a, b) => b.score - a.score).map((p, idx) => ({
-      ...p,
-      rank: idx + 1,
-    }));
-  }, [currentUserScore, currentUserCountry, userCountryName, userCountryFlag]);
+    }, (error) => {
+      console.error('Realtime Database listener error inside Leaderboard:', error);
+      setIsLoading(false);
+    });
 
-  const currentUser = dynamicLeaderboard.find((p) => p.isCurrentUser);
+    return () => unsubscribe();
+  }, [currentUserScore, currentUserCountry]);
+
+  // Use memoization for current user ranking
+  const currentUser = useMemo(() => competitors.find((p) => p.isCurrentUser), [competitors]);
 
   return (
     <div className="flex-1 flex flex-col gap-4 p-4 pb-12 font-sans bg-zinc-50 dark:bg-zinc-950">
@@ -57,11 +108,11 @@ export default function Leaderboard({ currentUserScore, currentUserCountry }: Le
           </p>
         </div>
 
-        {/* User's Current Standin banner */}
-        {currentUser && (
+        {/* User's Current Standing banner */}
+        {!isLoading && currentUser && (
           <div className="mt-4 p-2 bg-black/15 rounded-xl border border-white/10 flex justify-between items-center text-xs">
             <span className="font-extrabold text-amber-200">Your Standing:</span>
-            <span className="font-black font-mono">Rank #{currentUser.rank} • {currentUser.score} XP</span>
+            <span className="font-black font-mono animate-pulse">Rank #{currentUser.rank} • {currentUser.score} XP</span>
           </div>
         )}
       </div>
@@ -73,65 +124,76 @@ export default function Leaderboard({ currentUserScore, currentUserCountry }: Le
         </span>
 
         <div className="flex flex-col gap-2">
-          {dynamicLeaderboard.map((player) => {
-            const isSelf = player.isCurrentUser;
-            const rankLabel = player.rank === 1 ? '🥇' : player.rank === 2 ? '🥈' : player.rank === 3 ? '🥉' : `#${player.rank}`;
-            
-            return (
-              <div
-                key={player.rank}
-                className={`flex justify-between items-center px-3.5 py-3 rounded-2xl border transition duration-200 ${
-                  isSelf
-                    ? 'border-indigo-600 bg-indigo-50/40 dark:bg-zinc-850 dark:border-indigo-500 shadow-xs'
-                    : 'border-zinc-100 dark:border-zinc-800/40 bg-zinc-50 dark:bg-zinc-900/60'
-                }`}
-              >
-                <div className="flex items-center gap-3">
-                  {/* Rank Badge */}
-                  <span className={`w-8 text-center text-xs font-black font-mono text-zinc-500 ${
-                    player.rank <= 3 ? 'text-lg' : ''
-                  }`}>
-                    {rankLabel}
-                  </span>
+          {isLoading ? (
+            <div className="py-12 flex flex-col items-center justify-center text-zinc-400 gap-2">
+              <div className="w-7 h-7 border-2 border-lime-500/20 border-t-lime-500 dark:border-lime-500/20 dark:border-t-lime-400 animate-spin rounded-full"></div>
+              <span className="text-[10px] font-bold uppercase tracking-wider">Syncing Arena...</span>
+            </div>
+          ) : competitors.length === 0 ? (
+            <div className="py-12 text-center text-[11px] text-zinc-400 font-medium">
+              No competitors joined the arena yet. Share your app to invite real gym players!
+            </div>
+          ) : (
+            competitors.map((player) => {
+              const isSelf = player.isCurrentUser;
+              const rankLabel = player.rank === 1 ? '🥇' : player.rank === 2 ? '🥈' : player.rank === 3 ? '🥉' : `#${player.rank}`;
+              
+              return (
+                <div
+                  key={player.rank}
+                  className={`flex justify-between items-center px-3.5 py-3 rounded-2xl border transition duration-200 ${
+                    isSelf
+                      ? 'border-lime-500 bg-lime-50/20 dark:bg-zinc-850 dark:border-lime-500 shadow-xs'
+                      : 'border-zinc-100 dark:border-zinc-800/40 bg-zinc-50 dark:bg-zinc-900/60'
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    {/* Rank Badge */}
+                    <span className={`w-8 text-center text-xs font-black font-mono text-zinc-500 ${
+                      player.rank <= 3 ? 'text-lg' : ''
+                    }`}>
+                      {rankLabel}
+                    </span>
 
-                  {/* Competitor Avatar Icon */}
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm ${
-                    isSelf ? 'bg-indigo-100 border border-indigo-200' : 'bg-zinc-200/50'
-                  }`}>
-                    {player.avatarUrl || '🧑🏼'}
+                    {/* Competitor Avatar Icon */}
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm ${
+                      isSelf ? 'bg-lime-100 border border-lime-200 dark:bg-lime-950/40 dark:border-lime-900/40' : 'bg-zinc-200/50'
+                    }`}>
+                      {player.avatarUrl || '🧑🏼'}
+                    </div>
+
+                    {/* Name and geographic region */}
+                    <div>
+                      <h4 className={`text-xs font-black leading-tight ${
+                        isSelf ? 'text-lime-700 dark:text-lime-400 font-extrabold' : 'text-zinc-800 dark:text-zinc-200'
+                      }`}>
+                        {player.name} {isSelf && '(You)'}
+                      </h4>
+                      <span className="text-[9px] text-zinc-400 block font-sans">
+                        {player.country}
+                      </span>
+                    </div>
                   </div>
 
-                  {/* Name and geographic region */}
-                  <div>
-                    <h4 className={`text-xs font-black leading-tight ${
-                      isSelf ? 'text-indigo-700 dark:text-indigo-400 font-extrabold' : 'text-zinc-800 dark:text-zinc-200'
+                  {/* Score XP */}
+                  <div className="text-right">
+                    <span className={`text-xs font-black font-mono ${
+                      isSelf ? 'text-lime-600 dark:text-lime-400' : 'text-zinc-700 dark:text-zinc-300'
                     }`}>
-                      {player.name} {isSelf && '(You)'}
-                    </h4>
-                    <span className="text-[9px] text-zinc-400 block font-sans">
-                      {player.country}
+                      {player.score} <span className="text-[9px] font-bold text-zinc-400 font-sans">XP</span>
                     </span>
                   </div>
                 </div>
-
-                {/* Score XP */}
-                <div className="text-right">
-                  <span className={`text-xs font-black font-mono ${
-                    isSelf ? 'text-indigo-600 dark:text-indigo-400' : 'text-zinc-700 dark:text-zinc-300'
-                  }`}>
-                    {player.score} <span className="text-[9px] font-bold text-zinc-400">XP</span>
-                  </span>
-                </div>
-              </div>
-            );
-          })}
+              );
+            })
+          )}
         </div>
       </div>
 
       {/* Arena motivation tips */}
-      <div className="p-3.5 bg-indigo-50/50 dark:bg-indigo-950/20 rounded-2xl border border-indigo-100/30 text-center">
-        <Medal className="w-5 h-5 text-indigo-500 mx-auto mb-1.5" />
-        <span className="text-[11px] font-extrabold text-indigo-600 dark:text-indigo-400 block uppercase tracking-wider">
+      <div className="p-3.5 bg-lime-50/20 dark:bg-lime-950/20 rounded-2xl border border-lime-200/30 text-center">
+        <Medal className="w-5 h-5 text-lime-500 mx-auto mb-1.5" />
+        <span className="text-[11px] font-extrabold text-lime-700 dark:text-lime-400 block uppercase tracking-wider">
           Next Tier Reward at 1000 XP
         </span>
         <p className="text-[10px] text-zinc-400 leading-normal max-w-[280px] mx-auto mt-0.5">

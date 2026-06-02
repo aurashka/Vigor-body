@@ -28,6 +28,92 @@ export const ILLNESSES = [
 ];
 
 export const FOODS_DATABASE: FoodItem[] = [
+  // --- GENERAL VEGETABLES & FRUITS (MAIN FOCUS) ---
+  {
+    id: 'g_spinach_salad',
+    name: 'Sautéed Garlic Spinach',
+    protein: 3,
+    fat: 1.5,
+    carbs: 4,
+    calories: 40,
+    category: 'vegetable_fruit',
+    isLocal: false,
+    countries: [],
+    servingSize: '1 cup (150g)'
+  },
+  {
+    id: 'g_mixed_berries',
+    name: 'Mixed Fresh berries',
+    protein: 1,
+    fat: 0.4,
+    carbs: 15,
+    calories: 65,
+    category: 'vegetable_fruit',
+    isLocal: false,
+    countries: [],
+    servingSize: '1 cup (150g)'
+  },
+  {
+    id: 'g_season_salad',
+    name: 'Cucumber Tomato Garden Salad',
+    protein: 1.2,
+    fat: 0.2,
+    carbs: 6,
+    calories: 28,
+    category: 'vegetable_fruit',
+    isLocal: false,
+    countries: [],
+    servingSize: '1 bowl'
+  },
+  {
+    id: 'g_fresh_apple',
+    name: 'Crisp Red Apple Slices',
+    protein: 0.5,
+    fat: 0.3,
+    carbs: 25,
+    calories: 95,
+    category: 'vegetable_fruit',
+    isLocal: false,
+    countries: [],
+    servingSize: '1 medium fruit'
+  },
+  {
+    id: 'g_roasted_veggies',
+    name: 'Roasted Bell Peppers & Zucchini',
+    protein: 1.8,
+    fat: 2,
+    carbs: 8,
+    calories: 55,
+    category: 'vegetable_fruit',
+    isLocal: false,
+    countries: [],
+    servingSize: '1 plate'
+  },
+  {
+    id: 'g_ripe_mango',
+    name: 'Fresh Ripe Mango Slices',
+    protein: 1,
+    fat: 0.4,
+    carbs: 25,
+    calories: 99,
+    category: 'vegetable_fruit',
+    isLocal: false,
+    countries: [],
+    servingSize: '1 cup'
+  },
+  {
+    id: 'g_sweet_banana',
+    name: 'Fresh Cavendish Banana',
+    protein: 1.3,
+    fat: 0.3,
+    carbs: 27,
+    calories: 105,
+    category: 'vegetable_fruit',
+    isLocal: false,
+    countries: [],
+    servingSize: '1 single'
+  },
+
   // --- INDIA LOCAL FOODS ---
   {
     id: 'in_paneer',
@@ -206,7 +292,7 @@ export const FOODS_DATABASE: FoodItem[] = [
     fat: 15,
     carbs: 9,
     calories: 160,
-    category: 'fat',
+    category: 'vegetable_fruit',
     isLocal: true,
     countries: ['US', 'MX', 'AU', 'BR'],
     servingSize: '1/2 fruit'
@@ -602,7 +688,7 @@ export const FOODS_DATABASE: FoodItem[] = [
     fat: 0.4,
     carbs: 7,
     calories: 34,
-    category: 'carbs',
+    category: 'vegetable_fruit',
     isLocal: false,
     countries: [],
     servingSize: '1 cup (150g)'

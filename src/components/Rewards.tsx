@@ -58,7 +58,7 @@ export default function Rewards({
   const unlockedCount = dynamicBadges.filter((b) => b.unlockedAt).length;
 
   const renderBadgeIcon = (iconName: string, active: boolean) => {
-    const color = active ? 'text-indigo-600 dark:text-indigo-400' : 'text-zinc-300 dark:text-zinc-700';
+    const color = active ? 'text-lime-600 dark:text-lime-400' : 'text-zinc-300 dark:text-zinc-700';
     switch (iconName) {
       case 'Droplet':
         return <Droplet className={`w-5 h-5 ${color} ${active ? 'fill-current text-blue-500' : ''}`} />;
@@ -77,12 +77,12 @@ export default function Rewards({
     <div className="flex-1 flex flex-col gap-4 p-4 pb-12 font-sans bg-zinc-50 dark:bg-zinc-950">
       
       {/* Dynamic Milestones summary */}
-      <div className="bg-gradient-to-r from-indigo-700 to-violet-800 p-5 rounded-3xl text-white shadow-md">
+      <div className="bg-gradient-to-r from-emerald-600 to-lime-500 p-5 rounded-3xl text-zinc-950 dark:text-zinc-950 shadow-md">
         <div className="flex justify-between items-center">
-          <span className="text-[9px] font-black uppercase tracking-widest text-[#d6bcfa] bg-white/10 px-2.5 py-0.5 rounded-full">
+          <span className="text-[9px] font-black uppercase tracking-widest text-[#1c1917] bg-white/30 px-2.5 py-0.5 rounded-full">
             Fit Progress Rank
           </span>
-          <span className="text-xs font-bold text-amber-300 flex items-center gap-1">
+          <span className="text-xs font-black text-emerald-950 flex items-center gap-1">
              {unlockedCount} / {dynamicBadges.length} Trophies
           </span>
         </div>
@@ -115,7 +115,7 @@ export default function Rewards({
                 key={badge.id}
                 className={`flex gap-3.5 items-center p-3 rounded-2xl border transition duration-200 ${
                   isUnlocked
-                    ? 'bg-indigo-50/20 border-indigo-100/50 dark:bg-zinc-850 dark:border-indigo-950 text-zinc-900 dark:text-white'
+                    ? 'bg-lime-50/10 border-lime-150 dark:bg-zinc-850 dark:border-lime-900/30 text-zinc-900 dark:text-white'
                     : 'bg-zinc-50 dark:bg-zinc-900/40 border-zinc-100 dark:border-zinc-800 text-zinc-400'
                 }`}
                 id={`reward-badge-card-${badge.id}`}
@@ -123,7 +123,7 @@ export default function Rewards({
                 {/* Custom Badge Avatar Icon Container */}
                 <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 border ${
                   isUnlocked 
-                    ? 'bg-white dark:bg-zinc-800 border-indigo-200 text-indigo-600 dark:border-zinc-700' 
+                    ? 'bg-white dark:bg-zinc-800 border-lime-200 text-lime-600 dark:border-zinc-700' 
                     : 'bg-zinc-100 dark:bg-zinc-800/80 border-transparent text-zinc-300'
                 }`}>
                   {renderBadgeIcon(badge.iconName, isUnlocked)}
@@ -135,7 +135,7 @@ export default function Rewards({
                       {badge.title}
                     </h4>
                     {isUnlocked ? (
-                      <span className="text-[8px] font-black uppercase text-indigo-600 bg-indigo-50 dark:bg-indigo-950 px-2 py-0.5 rounded-full">
+                      <span className="text-[8px] font-black uppercase text-lime-700 bg-lime-100/60 dark:bg-lime-950/25 dark:text-lime-400 px-2 py-0.5 rounded-full">
                         {badge.unlockedAt}
                       </span>
                     ) : (

@@ -10,10 +10,15 @@ import AndroidFrame from './components/AndroidFrame';
 import Onboarding from './components/Onboarding';
 import Dashboard from './components/Dashboard';
 import Leaderboard from './components/Leaderboard';
+import Profile from './components/Profile';
 import Rewards from './components/Rewards';
 import Settings from './components/Settings';
 import FoodLoggerModal from './components/FoodLoggerModal';
-import { Home, Trophy, Award, Settings as SettingsIcon, Sparkles } from 'lucide-react';
+import AuthScreen from './components/AuthScreen';
+import { auth, database } from './firebase';
+import { onAuthStateChanged, signOut } from 'firebase/auth';
+import { ref, onValue, set, get, child } from 'firebase/database';
+import { Home, Trophy, User, Award, Settings as SettingsIcon, Sparkles } from 'lucide-react';
 
 const LOCAL_STORAGE_PROFILE_KEY = 'vigor_body_user_profile';
 const LOCAL_STORAGE_LOGS_KEY = 'vigor_body_daily_logs';
@@ -23,33 +28,72 @@ const LOCAL_STORAGE_STREAK_KEY = 'vigor_body_streak_count';
 export default function App() {
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [theme, setTheme] = useState<'light' | 'dark'>('dark');
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'leaderboard' | 'rewards' | 'settings'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'leaderboard' | 'profile' | 'rewards' | 'settings'>('dashboard');
   const [dailyLogs, setDailyLogs] = useState<Record<string, DailyLog>>({});
   const [isFoodLoggerOpen, setIsFoodLoggerOpen] = useState(false);
   const [foodLoggerCategory, setFoodLoggerCategory] = useState<'protein' | 'carbs' | 'fat' | null>(null);
 
-  // Load configuration and cached history on mount
+  // Firebase Auth and real-time synchronization state
+  const [currentUser, setCurrentUser] = useState<string | null>(null);
+  const [authChecking, setAuthChecking] = useState<boolean>(true);
+
+  // 1. Firebase Authentication state change listener
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        setCurrentUser(user.uid);
+        
+        // Listen to cloud user data in real-time
+        const userDbRef = ref(database, `users/${user.uid}`);
+        const unsubscribeDb = onValue(userDbRef, (snapshot) => {
+          if (snapshot.exists()) {
+            const data = snapshot.val();
+            if (data.profile) {
+              setUserProfile(data.profile);
+            } else {
+              setUserProfile(null);
+            }
+            if (data.dailyLogs) {
+              setDailyLogs(data.dailyLogs);
+            } else {
+              setDailyLogs({});
+            }
+          } else {
+            // First time login or clean register state
+            setUserProfile(null);
+            setDailyLogs({});
+          }
+          setAuthChecking(false);
+        }, (error) => {
+          console.error("Database connection issue: ", error);
+          setAuthChecking(false);
+        });
+
+        return () => {
+          unsubscribeDb();
+        };
+      } else {
+        setCurrentUser(null);
+        setUserProfile(null);
+        setDailyLogs({});
+        setAuthChecking(false);
+      }
+    });
+
+    return unsubscribe;
+  }, []);
+
+  // 2. Load theme cache from localStorage on mount
   useEffect(() => {
     try {
-      const storedProfile = localStorage.getItem(LOCAL_STORAGE_PROFILE_KEY);
-      if (storedProfile) {
-        setUserProfile(JSON.parse(storedProfile));
-      }
-
-      const storedLogs = localStorage.getItem(LOCAL_STORAGE_LOGS_KEY);
-      if (storedLogs) {
-        setDailyLogs(JSON.parse(storedLogs));
-      }
-
       const storedTheme = localStorage.getItem(LOCAL_STORAGE_THEME_KEY);
       if (storedTheme === 'dark' || storedTheme === 'light') {
         setTheme(storedTheme);
       } else {
-        // Light mode is default matching standard guidelines
         setTheme('light');
       }
     } catch (e) {
-      console.error('Failed loading cache', e);
+      console.error('Failed loading theme cache', e);
     }
   }, []);
 
@@ -67,10 +111,7 @@ export default function App() {
   // Derive today's current log, creating it if it doesn't exist
   const todayKey = getTodayDateKey();
   const todayLog: DailyLog = React.useMemo(() => {
-    if (dailyLogs[todayKey]) {
-      return dailyLogs[todayKey];
-    }
-    return {
+    const defaultLog: DailyLog = {
       date: todayKey,
       waterIntake: 0,
       stepsWalked: 0,
@@ -78,25 +119,45 @@ export default function App() {
       foodsEaten: [],
       caloriesBurned: 0,
     };
+    if (dailyLogs[todayKey]) {
+      return {
+        ...defaultLog,
+        ...dailyLogs[todayKey],
+        exercisesCompleted: dailyLogs[todayKey].exercisesCompleted || [],
+        foodsEaten: dailyLogs[todayKey].foodsEaten || [],
+      };
+    }
+    return defaultLog;
   }, [dailyLogs, todayKey]);
 
-  // Save profile helper
+  // Save profile to master cloud DB
   const handleCompleteOnboarding = (profile: UserProfile) => {
     setUserProfile(profile);
-    localStorage.setItem(LOCAL_STORAGE_PROFILE_KEY, JSON.stringify(profile));
+    if (currentUser) {
+      const sanitized = JSON.parse(JSON.stringify(profile));
+      set(ref(database, `users/${currentUser}/profile`), sanitized);
+      set(ref(database, `users/${currentUser}/updatedAt`), new Date().toISOString());
+    }
   };
 
   const handleChangeProfile = (profile: UserProfile) => {
     setUserProfile(profile);
-    localStorage.setItem(LOCAL_STORAGE_PROFILE_KEY, JSON.stringify(profile));
+    if (currentUser) {
+      const sanitized = JSON.parse(JSON.stringify(profile));
+      set(ref(database, `users/${currentUser}/profile`), sanitized);
+      set(ref(database, `users/${currentUser}/updatedAt`), new Date().toISOString());
+    }
   };
 
-  // Upstream update handler to save daily indicators
+  // Upstream update handler to save daily indicators to master cloud DB
   const handleUpdateDailyLog = (changes: Partial<DailyLog>) => {
     const updatedLog = { ...todayLog, ...changes };
     const nextLogs = { ...dailyLogs, [todayKey]: updatedLog };
     setDailyLogs(nextLogs);
-    localStorage.setItem(LOCAL_STORAGE_LOGS_KEY, JSON.stringify(nextLogs));
+    if (currentUser) {
+      const sanitized = JSON.parse(JSON.stringify(updatedLog));
+      set(ref(database, `users/${currentUser}/dailyLogs/${todayKey}`), sanitized);
+    }
   };
 
   // Add Eaten portion helper
@@ -124,7 +185,19 @@ export default function App() {
     };
 
     setUserProfile(restoredProfile);
-    localStorage.setItem(LOCAL_STORAGE_PROFILE_KEY, JSON.stringify(restoredProfile));
+    if (currentUser) {
+      const sanitized = JSON.parse(JSON.stringify(restoredProfile));
+      set(ref(database, `users/${currentUser}/profile`), sanitized);
+    }
+  };
+
+  // Log out mechanism
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+    } catch (e) {
+      console.error('Logout failed', e);
+    }
   };
 
   const handleOpenFoodLoggerByMacro = (category: 'protein' | 'carbs' | 'fat' | null) => {
@@ -161,8 +234,8 @@ export default function App() {
       const targets = calculateProfileTargets(userProfile);
       waterOk = todayLog.waterIntake >= targets.water;
       stepsOk = todayLog.stepsWalked >= targets.steps;
-      workoutOk = todayLog.exercisesCompleted.length >= 2;
-      const totalCal = todayLog.foodsEaten.reduce((sum, f) => sum + f.calories, 0);
+      workoutOk = (todayLog.exercisesCompleted || []).length >= 2;
+      const totalCal = (todayLog.foodsEaten || []).reduce((sum, f) => sum + (f.calories || 0), 0);
       dietOk = totalCal > 0 && totalCal <= targets.calories + 100;
     }
 
@@ -183,9 +256,32 @@ export default function App() {
     };
   }, [dailyLogs, todayLog, userProfile, todayKey]);
 
+  // Sync score and streak values to master database Ref
+  useEffect(() => {
+    if (currentUser && userProfile) {
+      set(ref(database, `users/${currentUser}/totalPoints`), totalPoints);
+      set(ref(database, `users/${currentUser}/streakCount`), streakCount);
+    }
+  }, [currentUser, userProfile, totalPoints, streakCount]);
+
   return (
     <AndroidFrame theme={theme}>
-      {!userProfile ? (
+      {authChecking ? (
+        <div className="flex-1 flex flex-col items-center justify-center p-5 bg-[#f8fafc] dark:bg-[#09090b] h-full text-center">
+          <div className="w-10 h-10 rounded-full border-4 border-indigo-650/20 border-t-indigo-650 dark:border-indigo-550/20 dark:border-t-indigo-500 animate-spin mb-4"></div>
+          <p className="text-xs font-black uppercase text-zinc-400 dark:text-zinc-500 tracking-widest font-sans animate-pulse">
+            Connecting Vigor Cloud...
+          </p>
+        </div>
+      ) : !currentUser ? (
+        <AuthScreen onAuthSuccess={(uid, data) => {
+          setCurrentUser(uid);
+          if (data) {
+            setUserProfile(data.profile || null);
+            setDailyLogs(data.dailyLogs || {});
+          }
+        }} theme={theme} />
+      ) : !userProfile ? (
         <Onboarding onComplete={handleCompleteOnboarding} />
       ) : (
         <div className="flex-1 flex flex-col h-full bg-zinc-50 dark:bg-[#09090b]">
@@ -193,7 +289,7 @@ export default function App() {
           {/* Main App Bar Headers */}
           <div className="sticky top-0 bg-white/95 dark:bg-[#0c0c0e]/95 backdrop-blur-md px-5 py-3 border-b border-zinc-200 dark:border-zinc-800/80 z-30 flex justify-between items-center">
             <div className="flex items-center gap-2">
-              <span className="text-xl">⚡️</span>
+              <span className="text-xl flex items-center justify-center">⚡️</span>
               <div>
                 <h1 className="text-sm font-sans font-black tracking-tight text-zinc-900 dark:text-white leading-none uppercase">
                   Vigor Body
@@ -231,6 +327,14 @@ export default function App() {
               />
             )}
 
+            {activeTab === 'profile' && (
+              <Profile
+                userProfile={userProfile}
+                totalPoints={totalPoints}
+                onChangeProfile={handleChangeProfile}
+              />
+            )}
+
             {activeTab === 'rewards' && (
               <Rewards
                 totalPoints={totalPoints}
@@ -248,6 +352,7 @@ export default function App() {
                 theme={theme}
                 onChangeTheme={setTheme}
                 onResetSystemTargetsOnly={handleResetSystemTargets}
+                onLogout={handleLogout}
               />
             )}
           </div>
@@ -274,6 +379,17 @@ export default function App() {
             >
               <Trophy className="w-5 h-5 cursor-pointer" />
               <span className="text-[9px] font-bold tracking-wide">Arena</span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab('profile')}
+              className={`flex flex-col items-center gap-1 bg-transparent border-transparent select-none transition duration-150 ${
+                activeTab === 'profile' ? 'text-zinc-900 dark:text-lime-400 font-extrabold' : 'text-zinc-400 dark:text-zinc-500'
+              }`}
+              id="tab-btn-profile"
+            >
+              <User className="w-5 h-5 cursor-pointer" />
+              <span className="text-[9px] font-bold tracking-wide">Profile</span>
             </button>
 
             <button
